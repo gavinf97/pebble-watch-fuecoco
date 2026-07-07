@@ -1,0 +1,28 @@
+{
+  "name": "fuecoco-face",
+  "version": "1.0.0",
+  "author": "Gavin Farrell",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "pebble": {
+    "displayName": "Fuecoco",
+    "uuid": "56030999-7928-4663-9529-623891465223",
+    "sdkVersion": "3",
+    "targetPlatforms": [
+      "flint"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "resources": {
+      "media": [
+        {
+          "type": "bitmap",
+          "name": "IMAGE_FUECOCO",
+          "file": "images/fuecoco.png"
+        }
+      ]
+    }
+  },
+  "dependencies": {}
+}

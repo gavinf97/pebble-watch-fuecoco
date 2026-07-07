@@ -1,0 +1,34 @@
+{
+  "name": "Pebble 2 Duo (Flint) — Fuecoco Watchface Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "pebble.toolPath": "/root/.local/bin/pebble",
+        "pebble.emulator.defaultPlatform": "flint"
+      },
+      "extensions": [
+        "coredevices.pebble-vscode",
+        "ms-vscode.cpptools"
+      ]
+    }
+  },
+  // CRITICAL: Pass the host DISPLAY variable to the container
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}"
+  },
+  // CRITICAL: Mount the X11 socket for GUI rendering
+  "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.Xauthority,target=/root/.Xauthority,type=bind,consistency=cached"
+  ],
+  // Enable host networking for easier QEMU connections
+  "runArgs": [
+    "--net=host",
+    "--privileged"
+  ],
+  "remoteUser": "root"
+}

@@ -1,0 +1,9 @@
+fuecoco-face/build/
+*.pbw
+.lock-waf_*
+__pycache__/
+*.pyc
+screenshot*.png
+preview*.gif
+temp_frames/
+.claude/

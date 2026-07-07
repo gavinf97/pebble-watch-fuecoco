@@ -1,0 +1,13 @@
+services:
+  pebble:
+    build: .
+    volumes:
+      - ./fuecoco-face:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${HOME}/.Xauthority:/root/.Xauthority:ro
+    environment:
+      - DISPLAY=${DISPLAY}
+    network_mode: host
+    privileged: true
+    stdin_open: true
+    tty: true
