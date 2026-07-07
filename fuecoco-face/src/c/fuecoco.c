@@ -1,4 +1,5 @@
 #include <pebble.h>
+#include "message_keys.auto.h"
 
 static Window *s_main_window;
 
@@ -6,6 +7,16 @@ static Layer *s_battery_module_layer;
 static int s_battery_level;
 
 static TextLayer *s_time_layer;
+
+static Layer *s_weather_icon_layer;
+// -1 = no data yet (nothing drawn until the phone's first reading arrives)
+#define WEATHER_UNKNOWN -1
+#define WEATHER_CLEAR    0
+#define WEATHER_CLOUDY   1
+#define WEATHER_RAIN     2
+#define WEATHER_SNOW     3
+#define WEATHER_STORM    4
+static int s_weather_condition = WEATHER_UNKNOWN;
 
 static GBitmap *s_fuecoco_bitmap;
 static BitmapLayer *s_fuecoco_layer;
@@ -20,8 +31,109 @@ static void update_time() {
   text_layer_set_text(s_time_layer, s_time_buf);
 }
 
+static void request_weather_update() {
+  DictionaryIterator *iter;
+  if (app_message_outbox_begin(&iter) == APP_MSG_OK) {
+    dict_write_uint8(iter, MESSAGE_KEY_REQUEST_WEATHER, 1);
+    app_message_outbox_send();
+  }
+}
+
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
+  // Refresh weather every 30 minutes — plenty fresh without hammering the API
+  if (tick_time->tm_min % 30 == 0) {
+    request_weather_update();
+  }
+}
+
+// Maps an Open-Meteo/WMO weather code to one of our five icon categories.
+// https://open-meteo.com/en/docs — "WMO Weather interpretation codes"
+static int weather_code_to_condition(int code) {
+  if (code == 0) return WEATHER_CLEAR;
+  if (code <= 3 || code == 45 || code == 48) return WEATHER_CLOUDY;
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return WEATHER_RAIN;
+  if ((code >= 71 && code <= 77) || code == 85 || code == 86) return WEATHER_SNOW;
+  if (code >= 95) return WEATHER_STORM;
+  return WEATHER_CLOUDY;
+}
+
+// Small (12x12) weather icon. Kept deliberately simple/bold — there's no room
+// for detail at this size, so each condition is just a couple of shapes.
+static void weather_icon_update_proc(Layer *layer, GContext *ctx) {
+  if (s_weather_condition == WEATHER_UNKNOWN) {
+    return; // no data yet — draw nothing rather than guess
+  }
+
+  GRect bounds = layer_get_bounds(layer);
+  int w = bounds.size.w;
+  int h = bounds.size.h;
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_context_set_stroke_color(ctx, GColorBlack);
+
+  if (s_weather_condition == WEATHER_CLEAR) {
+    // Sun: filled circle + four short cardinal rays. Proportional to the
+    // layer's own size so shrinking/growing the icon doesn't need retuning.
+    GPoint center = GPoint(w / 2, h / 2);
+    int r = (w < h ? w : h) / 3;
+    if (r < 2) r = 2;
+    graphics_fill_circle(ctx, center, r);
+    graphics_draw_line(ctx, GPoint(center.x, 0), GPoint(center.x, 1));
+    graphics_draw_line(ctx, GPoint(center.x, h - 2), GPoint(center.x, h - 1));
+    graphics_draw_line(ctx, GPoint(0, center.y), GPoint(1, center.y));
+    graphics_draw_line(ctx, GPoint(w - 2, center.y), GPoint(w - 1, center.y));
+    return;
+  }
+
+  // Everything else starts from the same simple cloud blob, sized to leave
+  // room below for an accent (rain/snow/storm) when one is needed.
+  bool has_accent = (s_weather_condition != WEATHER_CLOUDY);
+  int cloud_h = has_accent ? (h * 3) / 5 : (h * 4) / 5;
+  if (cloud_h < 3) cloud_h = 3;
+  int cloud_y = has_accent ? 0 : (h - cloud_h) / 2;
+  GRect cloud = GRect(1, cloud_y, w - 2, cloud_h);
+  graphics_fill_rect(ctx, cloud, cloud_h / 2, GCornersAll);
+
+  if (!has_accent) {
+    return; // WEATHER_CLOUDY — cloud blob alone is enough
+  }
+
+  int accent_top = cloud_y + cloud_h;
+  int x1 = w / 4;
+  int x2 = w / 2;
+  int x3 = (w * 3) / 4;
+
+  switch (s_weather_condition) {
+    case WEATHER_RAIN:
+      graphics_draw_line(ctx, GPoint(x1, accent_top), GPoint(x1 - 1, h - 1));
+      graphics_draw_line(ctx, GPoint(x2, accent_top), GPoint(x2 - 1, h - 1));
+      graphics_draw_line(ctx, GPoint(x3, accent_top), GPoint(x3 - 1, h - 1));
+      break;
+    case WEATHER_SNOW: {
+      int y = accent_top + (h - accent_top) / 2;
+      graphics_fill_rect(ctx, GRect(x1, y, 1, 1), 0, GCornerNone);
+      graphics_fill_rect(ctx, GRect(x2, y, 1, 1), 0, GCornerNone);
+      graphics_fill_rect(ctx, GRect(x3, y, 1, 1), 0, GCornerNone);
+      break;
+    }
+    case WEATHER_STORM:
+      graphics_draw_line(ctx, GPoint(x2, accent_top), GPoint(x1, (accent_top + h) / 2));
+      graphics_draw_line(ctx, GPoint(x1, (accent_top + h) / 2), GPoint(x2, (accent_top + h) / 2));
+      graphics_draw_line(ctx, GPoint(x2, (accent_top + h) / 2), GPoint(x1, h - 1));
+      break;
+    default:
+      break;
+  }
+}
+
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+  Tuple *code_tuple = dict_find(iterator, MESSAGE_KEY_WEATHER_CODE);
+  if (code_tuple) {
+    s_weather_condition = weather_code_to_condition((int)code_tuple->value->int32);
+    if (s_weather_icon_layer) {
+      layer_mark_dirty(s_weather_icon_layer);
+    }
+  }
 }
 
 // Single bordered "module": "Battery" label on the left, bar on the right —
@@ -86,6 +198,14 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
   layer_add_child(root, text_layer_get_layer(s_time_layer));
 
+  // Weather icon — small, below the time's right-hand (minutes) digits.
+  // Fuecoco is drawn *after* this (see below) with an opaque background, so
+  // the icon must sit fully clear of its GRect (x>=113), not just clear of
+  // its ink, or Fuecoco's white background paints over/cuts off the icon.
+  s_weather_icon_layer = layer_create(GRect(115, 78, 21, 21));
+  layer_set_update_proc(s_weather_icon_layer, weather_icon_update_proc);
+  layer_add_child(root, s_weather_icon_layer);
+
   // Fuecoco — unchanged position/size
   s_fuecoco_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_FUECOCO);
   s_fuecoco_layer = bitmap_layer_create(GRect(31, 68, 82, 98));
@@ -102,6 +222,8 @@ static void main_window_unload(Window *window) {
 
   text_layer_destroy(s_time_layer);
 
+  layer_destroy(s_weather_icon_layer);
+
   bitmap_layer_destroy(s_fuecoco_layer);
   gbitmap_destroy(s_fuecoco_bitmap);
 }
@@ -116,6 +238,11 @@ static void init() {
 
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   battery_state_service_subscribe(battery_callback);
+
+  // Register AppMessage callbacks before opening, per Pebble's recommended order
+  app_message_register_inbox_received(inbox_received_callback);
+  app_message_open(128, 128);
+  request_weather_update();
 
   update_time();
 }

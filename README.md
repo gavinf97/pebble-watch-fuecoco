@@ -44,9 +44,11 @@ dev.sh                          # all dev commands go through this
 docker-compose.yml              # single "pebble" service, mounts fuecoco-face/ into the container
 Dockerfile                      # Ubuntu 24.04 + pebble-tool + Pebble SDK ("latest")
 fuecoco-face/
-  package.json                  # app metadata: UUID, targetPlatforms: ["flint"], resources
+  package.json                  # app metadata: UUID, targetPlatforms: ["flint"], resources,
+                                 #   enableMultiJS/capabilities/messageKeys for weather
   wscript                       # waf build script (multi-platform loop, standard pebble-tool pattern)
-  src/c/fuecoco.c                # watchface source: time, date, Fuecoco bitmap layer
+  src/c/fuecoco.c                # watchface source: battery module, time, weather icon, Fuecoco
+  src/pkjs/index.js              # runs on the phone: fetches weather, relays it to the watch
   resources/images/
     fuecoco.png                  # 82x98, pure black/white, extracted from reference/fuecpix.png
   reference/
@@ -139,21 +141,56 @@ character instead of an approximation. `scripts/generate_fuecoco_art.py` does th
    losing them to a mid-tone gray.
 4. Scales the result 2x with nearest-neighbour (no smoothing) to 82×98 for a crisp pixel-art look.
 
-Time and date stay as plain `TextLayer`s with system fonts, positioned **above** the character so
-neither ever overlaps or crowds the other.
+Time stays a plain `TextLayer` with a system font, positioned **above** the character so it never
+overlaps or crowds the art.
 
 Layout (checked so every element's bottom/right edge stays inside the 144×168 bounds):
 
 | Element | `GRect` | Notes |
 |---|---|---|
-| Time | `GRect(0, 0, 144, 46)` | `FONT_KEY_LECO_42_NUMBERS`, centered |
-| Date | `GRect(0, 46, 144, 20)` | `FONT_KEY_GOTHIC_18_BOLD`, centered |
+| Battery module | `GRect(1, 1, 142, 18)` | bordered box: "Battery" label (bold, left) + depletion bar (right) |
+| Time | `GRect(0, 19, 144, 42)` | `FONT_KEY_LECO_42_NUMBERS`, centered |
+| Weather icon | `GRect(115, 78, 21, 21)` | small, clear of Fuecoco's full `GRect` (x≥113) — see below |
 | Fuecoco | `GRect(31, 68, 82, 98)` | centered horizontally, 2px margin above the bottom edge |
 
 To change the artwork: either replace `resources/images/fuecoco.png` with your own pure
 black/white PNG at 82×98 (`BitmapLayer` doesn't scale), or tweak `THRESHOLD`/`SCALE` in
 `scripts/generate_fuecoco_art.py` and re-run it (`python3 scripts/generate_fuecoco_art.py` from
 inside `fuecoco-face/`) to regenerate from the reference chart with different tuning.
+
+## Weather
+
+A small (21×21) icon shows current conditions, updated from real weather data at the phone's
+GPS location — no percent/temperature text, just the icon, matching the "small and clean" style
+of the battery bar.
+
+**Data source: [Open-Meteo](https://open-meteo.com/)** — free, no API key required. There's no
+public, no-auth "Google Weather" API usable for this; Open-Meteo is what the wider Pebble
+developer ecosystem (including Core Devices' own official tooling, see Credits) uses for exactly
+this purpose, so it's the de facto standard for Pebble weather watchfaces.
+
+**How it flows** (the watch itself has no internet access — only the paired phone does):
+```
+Watch (fuecoco.c)  <-- AppMessage / Bluetooth -->  Phone (src/pkjs/index.js)  <-- HTTPS -->  Open-Meteo
+```
+1. `src/pkjs/index.js` runs on the phone (not the watch). On watchface launch, and every 30
+   minutes after (triggered by the watch via a `REQUEST_WEATHER` message from `tick_handler`), it
+   calls `navigator.geolocation.getCurrentPosition()` for the phone's GPS location, fetches
+   `current=weather_code` from Open-Meteo for those coordinates, and sends the resulting WMO
+   weather code to the watch as `WEATHER_CODE`.
+2. The watch's `inbox_received_callback` in `fuecoco.c` receives it, maps the WMO code to one of
+   five categories via `weather_code_to_condition()` (clear / cloudy / rain / snow / storm), and
+   redraws the icon: sun, cloud, rain (cloud + drops), snow (cloud + dots), or storm (cloud +
+   lightning bolt). Nothing is drawn until the first reading arrives.
+
+This requires `enableMultiJS`, `"capabilities": ["location"]`, and `"messageKeys"` in
+`package.json` — already set up. The **first time** the watchface runs on a real phone, the
+Pebble app will prompt for location permission; without it, the icon just stays blank (no crash,
+no fallback text, since we chose to keep this minimal rather than add error-state UI).
+
+To add more conditions or change the icon shapes, edit `weather_code_to_condition()` and
+`weather_icon_update_proc()` in `fuecoco.c` — the WMO code table is documented inline and at
+[Open-Meteo's docs](https://open-meteo.com/en/docs) under "WMO Weather interpretation codes".
 
 ## Roadmap (not yet built)
 
