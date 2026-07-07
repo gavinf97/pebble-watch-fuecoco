@@ -40,7 +40,9 @@ static void battery_module_update_proc(Layer *layer, GContext *ctx) {
   GRect text_box = GRect(6, 0, 52, bounds.size.h);
   GSize text_size = graphics_text_layout_get_content_size(
       "Battery", battery_font, text_box, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft);
-  text_box.origin.y = (bounds.size.h - text_size.h) / 2;
+  // Measured content size still includes a few px of font leading below the
+  // visible ink, so nudge up slightly from the naive centered position.
+  text_box.origin.y = (bounds.size.h - text_size.h) / 2 - 3;
   text_box.size.h = text_size.h;
 
   graphics_context_set_text_color(ctx, GColorBlack);
