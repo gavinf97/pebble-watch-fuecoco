@@ -1,0 +1,137 @@
+{
+  "name": "maushold-face",
+  "version": "1.0.0",
+  "author": "Gavin Farrell",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "pebble": {
+    "displayName": "Maushold",
+    "uuid": "5d5effde-e460-4d48-bbbb-170182c5c7ec",
+    "sdkVersion": "3",
+    "targetPlatforms": [
+      "flint"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "enableMultiJS": true,
+    "capabilities": [
+      "location"
+    ],
+    "messageKeys": [
+      "WEATHER_CODE",
+      "REQUEST_WEATHER",
+      "WEATHER_TEMP",
+      "WEATHER_IS_DAY",
+      "WEATHER_CLOUD",
+      "WEATHER_WIND"
+    ],
+    "resources": {
+      "media": [
+        {
+          "type": "bitmap",
+          "name": "IMAGE_MAUSHOLD_SCENE",
+          "file": "images/maushold_scene.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_CLOUD",
+          "file": "images/wx/wx_cloud.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_DRIZZLE",
+          "file": "images/wx/wx_drizzle.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_FOG",
+          "file": "images/wx/wx_fog.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_FRZ_DRIZZLE",
+          "file": "images/wx/wx_frz_drizzle.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_MOON",
+          "file": "images/wx/wx_moon.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_MOON_CLOUD",
+          "file": "images/wx/wx_moon_cloud.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_MOON_HAZE",
+          "file": "images/wx/wx_moon_haze.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_NODATA",
+          "file": "images/wx/wx_nodata.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_RAIN",
+          "file": "images/wx/wx_rain.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_RAIN_HEAVY",
+          "file": "images/wx/wx_rain_heavy.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_SLEET",
+          "file": "images/wx/wx_sleet.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_SNOW",
+          "file": "images/wx/wx_snow.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_SNOW_HEAVY",
+          "file": "images/wx/wx_snow_heavy.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_STORM",
+          "file": "images/wx/wx_storm.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_STORM_HAIL",
+          "file": "images/wx/wx_storm_hail.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_SUN",
+          "file": "images/wx/wx_sun.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_SUN_CLOUD",
+          "file": "images/wx/wx_sun_cloud.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_SUN_HAZE",
+          "file": "images/wx/wx_sun_haze.png"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_WX_WIND",
+          "file": "images/wx/wx_wind.png"
+        }
+      ]
+    }
+  },
+  "dependencies": {}
+}

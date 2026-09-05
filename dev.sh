@@ -8,6 +8,9 @@ else
   DC="docker-compose"
 fi
 
+FACE="${FACE:-fuecoco-face}"
+export FACE
+
 CMD="${1:-help}"
 
 xsetup() {
@@ -49,7 +52,7 @@ case "$CMD" in
   screenshot)
     OUT="${2:-screenshot.png}"
     $DC exec pebble bash -c "pebble screenshot --no-open --emulator flint /workspace/${OUT}"
-    echo "Saved to fuecoco-face/${OUT}"
+    echo "Saved to ${FACE}/${OUT}"
     ;;
 
   icons)
@@ -84,11 +87,16 @@ Daily commands (run from this directory):
   ./dev.sh gif                Generate a rollover preview GIF from the emulator
   ./dev.sh shell              Drop into a shell inside the build container
 
-Swap the Fuecoco artwork:
-  Replace fuecoco-face/resources/images/fuecoco_body.png and fuecoco_flame.png
-  with any pure black/white PNG at the same pixel dimensions (110x80 and 26x30),
-  then run ./dev.sh emu (or it auto-reloads in watch mode). Or edit and re-run
-  fuecoco-face/scripts/generate_fuecoco_art.py to regenerate them procedurally.
+Choosing which watch face to work on:
+  FACE defaults to fuecoco-face. Prefix any command to pick another, e.g.
+    FACE=maushold-face ./dev.sh emu
+    FACE=maushold-face ./dev.sh screenshot shot.png
+
+Regenerating the artwork (run on the host — these need numpy, which the container
+does not carry):
+  cd fuecoco-face  && python3 scripts/generate_fuecoco_art.py
+  cd maushold-face && python3 scripts/generate_maushold_art.py
+                      python3 scripts/generate_weather_icons.py
 EOF
     ;;
 esac

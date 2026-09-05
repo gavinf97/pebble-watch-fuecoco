@@ -1,4 +1,4 @@
-fuecoco-face/build/
+*/build/
 *.pbw
 .lock-waf_*
 __pycache__/
